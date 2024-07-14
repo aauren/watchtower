@@ -20,7 +20,10 @@ import (
 	t "github.com/containrrr/watchtower/pkg/types"
 )
 
-const defaultStopSignal = "SIGTERM"
+const (
+	defaultStopSignal    = "SIGTERM"
+	openContainerVersion = "org.opencontainers.image.version"
+)
 
 // A Client is the interface through which watchtower interacts with the
 // Docker API.
@@ -192,6 +195,10 @@ func (client dockerClient) StopContainer(c t.Container, timeout time.Duration) e
 	shortID := c.ID().ShortID()
 
 	if c.IsRunning() {
+		openVer, ok := c.ContainerInfo().Config.Labels[openContainerVersion]
+		if ok {
+			shortID = fmt.Sprintf("%s - %s", shortID, openVer)
+		}
 		log.Infof("Stopping %s (%s) with %s", c.Name(), shortID, signal)
 		if err := client.api.ContainerKill(bg, idStr, signal); err != nil {
 			return err
@@ -343,7 +350,13 @@ func (client dockerClient) HasNewImage(ctx context.Context, container t.Containe
 		return false, currentImageID, nil
 	}
 
-	log.Infof("Found new %s image (%s)", imageName, newImageID.ShortID())
+	imageID := newImageID.ShortID()
+	openImageVer, ok := newImageInfo.Config.Labels[openContainerVersion]
+	if ok {
+		imageID = fmt.Sprintf("%s - %s", imageID, openImageVer)
+	}
+
+	log.Infof("Found new %s image (%s)", imageName, imageID)
 	return true, newImageID, nil
 }
 
