@@ -194,6 +194,21 @@ func (m Progress) SetCooldownInfo(
 	}).Debug("Set cooldown info on container")
 }
 
+// SetVersionInfo sets the OCI version labels for a container's old and new images.
+//
+// Parameters:
+//   - containerID: ID of the container to update.
+//   - oldVersion: OCI version label of the current (old) image.
+//   - newVersion: OCI version label of the new image.
+func (m Progress) SetVersionInfo(containerID types.ContainerID, oldVersion, newVersion string) {
+	update, exists := m[containerID]
+	if !exists {
+		return
+	}
+
+	update.SetVersionInfo(oldVersion, newVersion)
+}
+
 // Restarted returns all containers marked as restarted.
 //
 // Returns:

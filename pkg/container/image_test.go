@@ -381,7 +381,7 @@ var _ = ginkgo.Describe("the client", func() {
 
 				c := &client{api: mockClient}
 
-				_, _, _, err := c.IsContainerStale(
+				_, _, _, _, err := c.IsContainerStale(
 					ctx,
 					container,
 					types.UpdateParams{NoPull: true},
@@ -433,7 +433,7 @@ var _ = ginkgo.Describe("the client", func() {
 				resetLogrus, logbuf := captureLogrus(logrus.DebugLevel)
 				defer resetLogrus()
 
-				stale, latestID, _, err := c.IsContainerStale(
+				stale, latestID, _, _, err := c.IsContainerStale(
 					context.Background(),
 					container,
 					types.UpdateParams{NoPull: true},
@@ -475,7 +475,7 @@ var _ = ginkgo.Describe("the client", func() {
 				resetLogrus, logbuf := captureLogrus(logrus.DebugLevel)
 				defer resetLogrus()
 
-				stale, latestID, _, err := c.IsContainerStale(
+				stale, latestID, _, _, err := c.IsContainerStale(
 					context.Background(),
 					container,
 					types.UpdateParams{NoPull: true},
@@ -516,7 +516,7 @@ var _ = ginkgo.Describe("the client", func() {
 
 				c := &client{api: mockClient}
 
-				stale, latestID, latestDigest, err := c.IsContainerStale(
+				stale, latestID, latestDigest, _, err := c.IsContainerStale(
 					context.Background(),
 					container,
 					types.UpdateParams{NoPull: true},
@@ -554,7 +554,7 @@ var _ = ginkgo.Describe("the client", func() {
 
 				c := &client{api: mockClient}
 
-				stale, latestID, latestDigest, err := c.IsContainerStale(
+				stale, latestID, latestDigest, _, err := c.IsContainerStale(
 					context.Background(),
 					container,
 					types.UpdateParams{NoPull: true},
@@ -592,7 +592,7 @@ var _ = ginkgo.Describe("the client", func() {
 
 				c := &client{api: mockClient}
 
-				stale, latestID, latestDigest, err := c.IsContainerStale(
+				stale, latestID, latestDigest, _, err := c.IsContainerStale(
 					context.Background(),
 					container,
 					types.UpdateParams{NoPull: true},
@@ -632,7 +632,7 @@ var _ = ginkgo.Describe("the client", func() {
 				resetLogrus, logbuf := captureLogrus(logrus.DebugLevel)
 				defer resetLogrus()
 
-				stale, latestID, _, err := c.IsContainerStale(
+				stale, latestID, _, _, err := c.IsContainerStale(
 					context.Background(),
 					container,
 					types.UpdateParams{NoPull: true},
@@ -676,7 +676,7 @@ var _ = ginkgo.Describe("the client", func() {
 
 				c := &client{api: mockClient}
 
-				stale, latestID, latestDigest, err := c.IsContainerStale(
+				stale, latestID, latestDigest, _, err := c.IsContainerStale(
 					context.Background(),
 					container,
 					types.UpdateParams{},
@@ -720,7 +720,7 @@ var _ = ginkgo.Describe("the client", func() {
 				resetLogrus, logbuf := captureLogrus(logrus.DebugLevel)
 				defer resetLogrus()
 
-				stale, latestID, latestDigest, err := c.IsContainerStale(
+				stale, latestID, latestDigest, _, err := c.IsContainerStale(
 					context.Background(),
 					container,
 					types.UpdateParams{},
@@ -773,7 +773,7 @@ var _ = ginkgo.Describe("the client", func() {
 				resetLogrus, logbuf := captureLogrus(logrus.DebugLevel)
 				defer resetLogrus()
 
-				stale, latestID, latestDigest, err := c.IsContainerStale(
+				stale, latestID, latestDigest, _, err := c.IsContainerStale(
 					context.Background(),
 					container,
 					types.UpdateParams{},

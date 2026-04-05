@@ -601,7 +601,7 @@ func (_c *MockClient_GetVersion_Call) RunAndReturn(run func() string) *MockClien
 }
 
 // IsContainerStale provides a mock function for the type MockClient
-func (_mock *MockClient) IsContainerStale(ctx context.Context, container types.Container, params types.UpdateParams) (bool, types.ImageID, string, error) {
+func (_mock *MockClient) IsContainerStale(ctx context.Context, container types.Container, params types.UpdateParams) (bool, types.ImageID, string, string, error) {
 	ret := _mock.Called(ctx, container, params)
 
 	if len(ret) == 0 {
@@ -611,8 +611,9 @@ func (_mock *MockClient) IsContainerStale(ctx context.Context, container types.C
 	var r0 bool
 	var r1 types.ImageID
 	var r2 string
-	var r3 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, types.Container, types.UpdateParams) (bool, types.ImageID, string, error)); ok {
+	var r3 string
+	var r4 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, types.Container, types.UpdateParams) (bool, types.ImageID, string, string, error)); ok {
 		return returnFunc(ctx, container, params)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, types.Container, types.UpdateParams) bool); ok {
@@ -630,12 +631,17 @@ func (_mock *MockClient) IsContainerStale(ctx context.Context, container types.C
 	} else {
 		r2 = ret.Get(2).(string)
 	}
-	if returnFunc, ok := ret.Get(3).(func(context.Context, types.Container, types.UpdateParams) error); ok {
+	if returnFunc, ok := ret.Get(3).(func(context.Context, types.Container, types.UpdateParams) string); ok {
 		r3 = returnFunc(ctx, container, params)
 	} else {
-		r3 = ret.Error(3)
+		r3 = ret.Get(3).(string)
 	}
-	return r0, r1, r2, r3
+	if returnFunc, ok := ret.Get(4).(func(context.Context, types.Container, types.UpdateParams) error); ok {
+		r4 = returnFunc(ctx, container, params)
+	} else {
+		r4 = ret.Error(4)
+	}
+	return r0, r1, r2, r3, r4
 }
 
 // MockClient_IsContainerStale_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsContainerStale'
@@ -674,12 +680,12 @@ func (_c *MockClient_IsContainerStale_Call) Run(run func(ctx context.Context, co
 	return _c
 }
 
-func (_c *MockClient_IsContainerStale_Call) Return(b bool, imageID types.ImageID, s string, err error) *MockClient_IsContainerStale_Call {
-	_c.Call.Return(b, imageID, s, err)
+func (_c *MockClient_IsContainerStale_Call) Return(b bool, imageID types.ImageID, s string, s1 string, err error) *MockClient_IsContainerStale_Call {
+	_c.Call.Return(b, imageID, s, s1, err)
 	return _c
 }
 
-func (_c *MockClient_IsContainerStale_Call) RunAndReturn(run func(ctx context.Context, container types.Container, params types.UpdateParams) (bool, types.ImageID, string, error)) *MockClient_IsContainerStale_Call {
+func (_c *MockClient_IsContainerStale_Call) RunAndReturn(run func(ctx context.Context, container types.Container, params types.UpdateParams) (bool, types.ImageID, string, string, error)) *MockClient_IsContainerStale_Call {
 	_c.Call.Return(run)
 	return _c
 }

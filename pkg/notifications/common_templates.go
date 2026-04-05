@@ -24,7 +24,7 @@ var commonTemplates = map[string]string{
 {{- $msg := $e.Message -}}
 {{- /* Format based on specific message types */ -}}
 {{- if eq $msg "Found new image" -}}
-    Found new image: {{index $e.Data "image"}} ({{with (index $e.Data "new_id")}}{{.}}{{else}}unknown{{end}})
+    Found new image: {{index $e.Data "image"}} ({{with (index $e.Data "new_id")}}{{.}}{{else}}unknown{{end}}){{if or (index $e.Data "old_version") (index $e.Data "new_version")}} {{with (index $e.Data "old_version")}}{{.}} {{end}}-> {{with (index $e.Data "new_version")}}{{.}}{{end}}{{end}}
 {{- else if eq $msg "Stopping container" -}}
     Stopped stale container: {{index $e.Data "container"}} ({{with (index $e.Data "id")}}{{.}}{{else}}unknown{{end}})
 {{- else if eq $msg "Started new container" -}}

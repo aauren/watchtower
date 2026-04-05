@@ -30,6 +30,20 @@ const (
 	WarnAuto WarningStrategy = "auto"
 )
 
+// openContainerVersion is the OCI annotation key for the image version.
+const openContainerVersion = "org.opencontainers.image.version"
+
+// GetOCIVersion extracts the org.opencontainers.image.version label from a container's image.
+// Returns an empty string if the label is not present or the container info is unavailable.
+func GetOCIVersion(c types.Container) string {
+	info := c.ContainerInfo()
+	if info == nil || info.Config == nil {
+		return ""
+	}
+
+	return info.Config.Labels[openContainerVersion]
+}
+
 // IsImagePinnedByDigest reports whether imageName is an immutable digest reference.
 //
 // It matches bare digests (sha256:...) and repository-qualified digests
@@ -96,13 +110,14 @@ type imageClient struct {
 //   - bool: True if image is stale, false otherwise.
 //   - types.ImageID: Latest image ID (or current if not pulled).
 //   - string: Latest registry manifest digest (empty if unavailable).
+//   - string: OCI version label of the new image, or empty if not present.
 //   - error: Non-nil if pull or inspection fails or cooldown defers the update.
 func (c imageClient) IsContainerStale(
 	ctx context.Context,
 	sourceContainer types.Container,
 	params types.UpdateParams,
 	warnOnHeadFailed WarningStrategy,
-) (bool, types.ImageID, string, error) {
+) (bool, types.ImageID, string, string, error) {
 	clog := logrus.WithFields(logrus.Fields{
 		"container": sourceContainer.Name(),
 		"image":     sourceContainer.ImageName(),
@@ -118,18 +133,18 @@ func (c imageClient) IsContainerStale(
 		if errors.Is(err, ErrImageCooldown) {
 			clog.WithError(err).Debug("Cooldown active - pull skipped")
 
-			return false, sourceContainer.ImageID(), "", err
+			return false, sourceContainer.ImageID(), "", "", err
 		}
 
 		if errors.Is(err, ErrPullImageNotFound) {
 			clog.WithError(err).Debug("Image not found in any registry - treating as up-to-date")
 
-			return false, sourceContainer.ImageID(), "", nil
+			return false, sourceContainer.ImageID(), "", "", nil
 		}
 
 		clog.WithError(err).Debug("Failed to pull image")
 
-		return false, sourceContainer.ImageID(), "", err
+		return false, sourceContainer.ImageID(), "", "", err
 	}
 
 	return c.HasNewImage(ctx, sourceContainer)
@@ -162,9 +177,16 @@ func (c imageClient) CheckContainerUpdate(
 		"image":     sourceContainer.ImageName(),
 	})
 
-	// Respect no-pull: monitor local image cache only.
+	// Respect no-pull: monitor local image cache only. The OCI version is dropped
+	// here because this path reports availability only and never builds notifications.
 	if sourceContainer.IsNoPull(params) {
-		return c.checkLocalImageStaleness(ctx, sourceContainer, clog)
+		stale, latestID, latestDigest, _, err := c.checkLocalImageStaleness(
+			ctx,
+			sourceContainer,
+			clog,
+		)
+
+		return stale, latestID, latestDigest, err
 	}
 
 	// Pinned digests cannot receive tag-based updates.
@@ -229,11 +251,12 @@ func (c imageClient) CheckContainerUpdate(
 //   - bool: True if a newer image exists, false if current is latest.
 //   - types.ImageID: Latest image ID.
 //   - string: Latest registry manifest digest (empty if unavailable).
+//   - string: OCI version label of the new image, or empty if not present.
 //   - error: Non-nil if inspection fails, nil on success.
 func (c imageClient) HasNewImage(
 	ctx context.Context,
 	sourceContainer types.Container,
-) (bool, types.ImageID, string, error) {
+) (bool, types.ImageID, string, string, error) {
 	clog := logrus.WithFields(logrus.Fields{
 		"container": sourceContainer.Name(),
 		"image":     sourceContainer.ImageName(),
@@ -250,7 +273,7 @@ func (c imageClient) HasNewImage(
 	if err != nil {
 		clog.WithError(err).Debug("Failed to inspect latest image")
 
-		return false, currentImageID, "", fmt.Errorf(
+		return false, currentImageID, "", "", fmt.Errorf(
 			"%w: %s: %w",
 			errInspectImageFailed,
 			sourceContainer.ImageName(),
@@ -269,10 +292,27 @@ func (c imageClient) HasNewImage(
 				newImageInfo.RepoDigests,
 				sourceContainer.ImageName(),
 			),
+			"",
 			nil
 	}
 
-	clog.WithField("new_id", newImageID.ShortID()).Info("Found new image")
+	// Extract OCI version label from the new image if available.
+	var newVersion string
+	if newImageInfo.Config != nil {
+		newVersion = newImageInfo.Config.Labels[openContainerVersion]
+	}
+
+	// Log full image name and ID, including the OCI version transition if available.
+	logFields := logrus.Fields{"new_id": newImageID.ShortID()}
+	if oldVersion := GetOCIVersion(sourceContainer); oldVersion != "" {
+		logFields["old_version"] = oldVersion
+	}
+
+	if newVersion != "" {
+		logFields["new_version"] = newVersion
+	}
+
+	clog.WithFields(logFields).Info("Found new image")
 
 	return true,
 		newImageID,
@@ -280,6 +320,7 @@ func (c imageClient) HasNewImage(
 			newImageInfo.RepoDigests,
 			sourceContainer.ImageName(),
 		),
+		newVersion,
 		nil
 }
 
@@ -684,21 +725,23 @@ func (c imageClient) warnOnHeadFailed(
 // Returns:
 //   - bool: True if image is stale, false otherwise.
 //   - types.ImageID: Latest image ID.
+//   - string: Latest registry manifest digest (empty if unavailable).
+//   - string: OCI version label of the new image, or empty if not present.
 //   - error: Non-nil if inspection fails, nil on success.
 func (c imageClient) checkLocalImageStaleness(
 	ctx context.Context,
 	sourceContainer types.Container,
 	clog *logrus.Entry,
-) (bool, types.ImageID, string, error) {
+) (bool, types.ImageID, string, string, error) {
 	clog.Debug("Skipping image pull due to no-pull setting - checking local image only")
 	clog.WithField("current_image_id", sourceContainer.ImageID()).
 		Debug("Current container image ID")
 
-	stale, latestID, latestDigest, err := c.HasNewImage(ctx, sourceContainer)
+	stale, latestID, latestDigest, newVersion, err := c.HasNewImage(ctx, sourceContainer)
 	if err != nil {
 		clog.WithError(err).Debug("Failed to check local image")
 
-		return false, sourceContainer.ImageID(), "", err
+		return false, sourceContainer.ImageID(), "", "", err
 	}
 
 	clog.WithFields(logrus.Fields{
@@ -706,5 +749,5 @@ func (c imageClient) checkLocalImageStaleness(
 		"latest_image_id": latestID,
 	}).Debug("Local image check result")
 
-	return stale, latestID, latestDigest, nil
+	return stale, latestID, latestDigest, newVersion, nil
 }

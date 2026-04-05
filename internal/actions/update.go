@@ -454,10 +454,11 @@ func Update(
 			)
 
 			var (
-				stale       bool
-				newestImage types.ImageID
-				checkErr    error
-				verifyErr   error
+				stale           bool
+				newestImage     types.ImageID
+				newImageVersion string
+				checkErr        error
+				verifyErr       error
 			)
 
 			// Determine if the container is stale and needs updating.
@@ -467,7 +468,7 @@ func Update(
 				stale = false
 				newestImage = sourceContainer.ImageID()
 			} else {
-				stale, newestImage, _, checkErr = client.IsContainerStale(
+				stale, newestImage, _, newImageVersion, checkErr = client.IsContainerStale(
 					ctx,
 					sourceContainer,
 					config,
@@ -577,6 +578,14 @@ func Update(
 					newestImage,
 					config,
 				)
+
+				// Set OCI version info AFTER AddScanned, which creates a new
+				// ContainerStatus. We stay inside resultMu so the progress map
+				// mutation is safe alongside the parallel staleness checks.
+				if stale {
+					oldVersion := container.GetOCIVersion(sourceContainer)
+					progress.SetVersionInfo(sourceContainer.ID(), oldVersion, newImageVersion)
+				}
 			}
 
 			// Track old image ID before update for cleanup notifications.

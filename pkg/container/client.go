@@ -180,12 +180,13 @@ type Client interface {
 	//   - bool: True if image is stale, false otherwise.
 	//   - types.ImageID: Latest image ID.
 	//   - string: Latest registry manifest digest (empty if unavailable).
+	//   - string: OCI version label of the new image, or empty if not present.
 	//   - error: Non-nil if check fails, nil on success.
 	IsContainerStale(
 		ctx context.Context,
 		container types.Container,
 		params types.UpdateParams,
-	) (bool, types.ImageID, string, error)
+	) (bool, types.ImageID, string, string, error)
 
 	// CheckContainerUpdate reports whether a newer image is available without
 	// pulling image layers. When NoPull is active it inspects the local cache
@@ -989,16 +990,18 @@ func (c *client) WarnOnHeadPullFailed(container types.Container) bool {
 // Returns:
 //   - bool: True if stale, false otherwise.
 //   - types.ImageID: Latest image ID.
+//   - string: Latest registry manifest digest (empty if unavailable).
+//   - string: OCI version label of the new image, or empty if not present.
 //   - error: Non-nil if check fails, nil on success.
 func (c *client) IsContainerStale(
 	ctx context.Context,
 	container types.Container,
 	params types.UpdateParams,
-) (bool, types.ImageID, string, error) {
+) (bool, types.ImageID, string, string, error) {
 	// Use image client to perform staleness check.
 	imgClient := newImageClient(c.api)
 
-	stale, newestImage, latestDigest, err := imgClient.IsContainerStale(
+	stale, newestImage, latestDigest, newVersion, err := imgClient.IsContainerStale(
 		ctx,
 		container,
 		params,
@@ -1018,7 +1021,7 @@ func (c *client) IsContainerStale(
 		}).Debug("Checked container staleness")
 	}
 
-	return stale, newestImage, latestDigest, err
+	return stale, newestImage, latestDigest, newVersion, err
 }
 
 // CheckContainerUpdate reports whether a newer image is available without pulling.

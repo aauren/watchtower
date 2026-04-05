@@ -48,6 +48,7 @@ type TestData struct {
 	ContainersByID               map[types.ContainerID]types.Container // Map of containers by ID.
 	Staleness                    map[string]bool                       // Map of container names to staleness status.
 	IsContainerStaleError        error                                 // Error to return from IsContainerStale (for testing).
+	NewImageVersion              string                                // OCI version label to return from IsContainerStale (for testing).
 	ListContainersError          error                                 // Error to return from ListContainers (for testing).
 	ListContainersFailCount      int                                   // Number of times ListContainers should fail before succeeding.
 	StopContainerError           error                                 // Error to return from StopContainer (for testing).
@@ -484,16 +485,16 @@ func (client MockClient) IsContainerStale(
 	ctx context.Context,
 	container types.Container,
 	_ types.UpdateParams,
-) (bool, types.ImageID, string, error) {
+) (bool, types.ImageID, string, string, error) {
 	client.TestData.IsContainerStaleCount.Add(1)
 
 	if err := client.checkContextCancellation(ctx); err != nil {
-		return false, "", "", err
+		return false, "", "", "", err
 	}
 
 	// Return configured error if set (for testing error conditions)
 	if client.TestData.IsContainerStaleError != nil {
-		return false, "", "", client.TestData.IsContainerStaleError
+		return false, "", "", "", client.TestData.IsContainerStaleError
 	}
 
 	stale, found := client.TestData.Staleness[container.Name()]
@@ -501,7 +502,7 @@ func (client MockClient) IsContainerStale(
 		stale = true // Default to stale if not specified.
 	}
 
-	return stale, "", "", nil
+	return stale, "", "", client.TestData.NewImageVersion, nil
 }
 
 // CheckContainerUpdate reports update availability using the same staleness map as IsContainerStale.
@@ -510,7 +511,9 @@ func (client MockClient) CheckContainerUpdate(
 	container types.Container,
 	params types.UpdateParams,
 ) (bool, types.ImageID, string, error) {
-	return client.IsContainerStale(ctx, container, params)
+	stale, imageID, latestDigest, _, err := client.IsContainerStale(ctx, container, params)
+
+	return stale, imageID, latestDigest, err
 }
 
 // WarnOnHeadPullFailed always returns true for the mock client.

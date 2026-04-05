@@ -354,15 +354,27 @@ func buildUpdateEntries(
 	cooldownPassed bool,
 ) []*logrus.Entry {
 	// Build the "Found new image" entry.
+	foundData := logrus.Fields{
+		"container": containerReport.Name(),
+		"image":     containerReport.ImageName(),
+		"new_id":    containerReport.LatestImageID().ShortID(),
+	}
+
+	// Include OCI version labels if available.
+	if cs, ok := containerReport.(*session.ContainerStatus); ok {
+		if v := cs.OldVersion(); v != "" {
+			foundData["old_version"] = v
+		}
+		if v := cs.NewVersion(); v != "" {
+			foundData["new_version"] = v
+		}
+	}
+
 	foundEntry := &logrus.Entry{
 		Level:   logrus.InfoLevel,
 		Message: FoundNewImageMessage,
-		Data: logrus.Fields{
-			"container": containerReport.Name(),
-			"image":     containerReport.ImageName(),
-			"new_id":    containerReport.LatestImageID().ShortID(),
-		},
-		Time: now,
+		Data:    foundData,
+		Time:    now,
 	}
 
 	if containerReport.IsMonitorOnly() {

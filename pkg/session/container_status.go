@@ -51,6 +51,8 @@ type ContainerStatus struct {
 	cooldownDelay      string            // Human-readable cooldown duration (e.g., "24 hours").
 	cooldownRemaining  string            // Human-readable remaining time (empty if passed).
 	cooldownEligibleAt time.Time         // Time when the container becomes eligible for update.
+	oldVersion         string            // OCI version label of the current (old) image.
+	newVersion         string            // OCI version label of the new image.
 }
 
 // ID returns the container ID.
@@ -204,4 +206,24 @@ func (u *ContainerStatus) CooldownDelay() string {
 // CooldownRemaining returns the human-readable remaining cooldown time.
 func (u *ContainerStatus) CooldownRemaining() string {
 	return u.cooldownRemaining
+}
+
+// SetVersionInfo sets the OCI version labels for the old and new images.
+//
+// Parameters:
+//   - oldVer: OCI version label of the current (old) image.
+//   - newVer: OCI version label of the new image.
+func (u *ContainerStatus) SetVersionInfo(oldVer, newVer string) {
+	u.oldVersion = oldVer
+	u.newVersion = newVer
+}
+
+// OldVersion returns the OCI version label of the current (old) image.
+func (u *ContainerStatus) OldVersion() string {
+	return u.oldVersion
+}
+
+// NewVersion returns the OCI version label of the new image.
+func (u *ContainerStatus) NewVersion() string {
+	return u.newVersion
 }
